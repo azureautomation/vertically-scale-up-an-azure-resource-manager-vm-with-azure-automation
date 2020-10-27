@@ -1,0 +1,20 @@
+{
+    "Author": "Kay Singh",
+    "ContentSize": 11385,
+    "ContentUrl": "https://raw.githubusercontent.com/azureautomation/vertically-scale-up-an-azure-resource-manager-vm-with-azure-automation/master/scaleUpV2Vm.ps1",
+    "DownloadCount": 4392,
+    "Id": "Vertically-scale-up-an-d6c15c54",
+    "IsFederated": true,
+    "IsWorkflow": false,
+    "Popularity": 129,
+    "RaterCount": 0,
+    "Rating": 0.0,
+    "ReleaseDate": "2016-3-29T00:00:00",
+    "RunbookKind": 5,
+    "RunbookKindString": "PowerShell",
+    "Summary": "This Azure Automation runbook can help you vertically scale up an Azure Resource Manager VM. This runbook can run from an Azure alert or by itself. This is intended to run only in Azure Automation service. An Azure Automation account with the \"Run as\" feature is required.",
+    "Title": "Vertically scale up an Azure Resource Manager VM with Azure Automation",
+    "UpdatedDate": "2019-4-9T00:00:00",
+    "Url": "https://github.com/azureautomation/vertically-scale-up-an-azure-resource-manager-vm-with-azure-automation",
+    "UserTags": ""
+}
