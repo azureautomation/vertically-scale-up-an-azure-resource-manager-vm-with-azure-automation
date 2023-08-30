@@ -6,24 +6,24 @@
 This Azure Automation runbook can help you vertically scale up an Azure Resource Manager VM. This runbook can run from an Azure alert or by itself. This is intended to run only in Azure Automation service. An Azure Automation account with a Managed Identity is required.
 
 
-.SYNOPSIS
+**SYNOPSIS**
   Connects to Azure using Managed Identity and vertically scales the VM
 
-.DESCRIPTION
+**DESCRIPTION**
   This runbook connects to Azure and scales up the VM 
 
-  REQUIRED 
+**REQUIRED**
   1. You have to create a managed identity for your automation account.
 
-.PARAMETER WebhookData
+**PARAMETER WebhookData**
    Required 
    This is the data that is sent in the webhook that is triggered from the VM alert rules
 
-.NOTES
+**NOTES**
    AUTHOR: Chetan Kaur
    LAST EDIT: August 30, 2023
 
-RELEASE NOTES
+**RELEASE NOTES**
 
 2023-08-30 : Updated runbook with Managed Identity authentication  
 
