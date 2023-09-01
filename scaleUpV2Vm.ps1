@@ -1,44 +1,53 @@
 <#
 .SYNOPSIS
-  Connects to Azure and vertically scales the VM
+  Connects to Azure using System Identity and vertically scales up the VM
 
 .DESCRIPTION
-  This runbook connects to Azure and scales up the VM 
-
-  REQUIRED AUTOMATION ASSETS
-  1. An Automation variable asset called "AzureSubscriptionId" that contains the GUID for this Azure subscription of the VM.  
-  2. An Automation credential asset called "AzureCredential" that contains the Azure AD user credential with authorization for this subscription. 
+  This runbook connects to Azure and scales up the VM   
 
 .PARAMETER WebhookData
    Required 
    This is the data that is sent in the webhook that is triggered from the VM alert rules
 
-.NOTES
-   AUTHOR: Azure Compute Team 
-   LASTEDIT: March 27, 2016
+NOTE- In this runbook, we are using "alertTargetIDs" property of the alert WebhookData object to get the ResourceGroupName and VmName. 
+"alertTargetIDs" property contains the list of the Azure Resource Manager IDs that are affected targets of an alert. 
+For a log alert defined on a Log Analytics workspace or Application Insights instance, it's the respective workspace or application and won't be applicable for below runbook. 
 #>
 
 param (
+
 	[parameter(Mandatory = $true)]
     [object]$WebhookData
 )
 
+
 if ($WebhookData -ne $null) {  
-	# Returns strings with status messages
 	[OutputType([String])]
 	
-	# Collect properties of WebhookData.
-	$WebhookBody    =   $WebhookData.RequestBody
-	
-	# Obtain the WebhookBody containing the AlertContext
-    $WebhookBody = (ConvertFrom-Json -InputObject $WebhookBody)
-	
-	if ($WebhookBody.status -eq "Activated") {
-		# Obtain the AlertContext
-		$AlertContext = [object]$WebhookBody.context
-		
-		$ResourceGroupName = $AlertContext.resourceGroupName
-		$VmName = $AlertContext.resourceName
+# Collect properties of WebhookData
+$WebhookBody = $WebhookData.RequestBody
+$WebhookBody = (ConvertFrom-Json -InputObject $WebhookBody)
+
+$monitorCondition = $WebhookBody.data.essentials.monitorCondition
+
+if ($monitorCondition -eq "Fired") {
+
+$resourceid = $WebhookBody.data.essentials.alertTargetIDs
+
+# Split the resource id into segments
+$segments = $resourceid -split '/'
+
+# Extract the relevant components
+$subscriptionId = $segments[2]
+$resourceGroupName = $segments[4]
+$provider = $segments[6]
+$resourceType = $segments[7]
+$VmName = $segments[8]
+
+# Print the extracted components
+Write-Output "Subscription ID: $subscriptionId"
+Write-Output "Resource Group Name: $ResourceGroupName"
+Write-Output "Resource Name: $VmName"
 		
 		$noResize = "noresize"
 		
@@ -218,15 +227,27 @@ if ($WebhookData -ne $null) {
             "Standard_NV24s_v2"= $noResize             
         } 
 		
-		# Connect to Azure and select the subscription to work against
-		$Cred = Get-AutomationPSCredential -Name 'AzureCredential'
-		$null = Add-AzureRmAccount -Credential $Cred -ErrorAction Stop
-		
-		$SubId = Get-AutomationVariable -Name 'AzureSubscriptionId'
-		$null = Set-AzureRmContext -SubscriptionId $SubId -ErrorAction Stop
-		
+    # Ensures you do not inherit an AzContext in your runbook
+        Disable-AzContextAutosave -Scope Process
+
+        try
+        {
+            "Logging in to Azure..."           
+
+    # Connect to Azure with system-assigned managed identity. 
+    # Please enable appropriate RBAC permissions to the system identity of this automation account. Otherwise, the runbook may fail...
+            $AzureContext = (Connect-AzAccount -Identity).context
+
+    # set and store context
+          $null = Set-AzContext -SubscriptionId $subscriptionId -ErrorAction Stop
+        }
+        catch {
+            Write-Error -Message $_.Exception
+            throw $_.Exception
+        }
+        
 		try {
-		    $vm = Get-AzureRmVm -ResourceGroupName $ResourceGroupName -VMName $VmName -ErrorAction Stop
+		    $vm = Get-AzVm -ResourceGroupName $ResourceGroupName -VMName $VmName -ErrorAction Stop
 		} catch {
 		    Write-Error "Virtual Machine not found"
 		    exit
@@ -246,9 +267,9 @@ if ($WebhookData -ne $null) {
 		    Write-Output "`nNew size will be: $newVMSize"
 				
 			$vm.HardwareProfile.VmSize = $newVMSize
-		    Update-AzureRmVm -VM $vm -ResourceGroupName $ResourceGroupName
+		    Update-AzVm -VM $vm -ResourceGroupName $ResourceGroupName
 			
-		    $updatedVm = Get-AzureRmVm -ResourceGroupName $ResourceGroupName -VMName $VmName
+		    $updatedVm = Get-AzVm -ResourceGroupName $ResourceGroupName -VMName $VmName
 		    $updatedVMSize = $updatedVm.HardwareProfile.vmSize
 			
 		    Write-Output "`nSize updated to: $updatedVMSize"	
